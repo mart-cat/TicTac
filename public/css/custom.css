@@ -1,0 +1,28 @@
+.table {
+    width: 300px; 
+    margin: auto; 
+    border-collapse: collapse; /* Убираем пробелы между ячейками */
+    
+}
+
+td {
+    border: 1px solid #000; 
+    width: 100px; 
+    height: 100px; 
+    text-align: center; 
+    font-size: 36px; 
+    cursor: pointer; 
+    transition: background-color 0.3s; /* Плавный переход цвета */
+}
+
+td:hover {
+    background-color: #f0f0f0; /* Цвет при наведении */
+}
+
+td.x {
+    color: red; 
+}
+
+td.o {
+    color: blue; 
+}
