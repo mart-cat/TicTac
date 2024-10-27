@@ -32,59 +32,60 @@
 </body>
 <!-- Я НЕНАВИЖУ JS, НО JQ УЧИТЬ ЛЕНЬ. ГОСПОДИ ПОМОГИ --> 
 <script>
-    let gameOver = false;
-    document.querySelectorAll('td').forEach(cell => {
-        cell.addEventListener('click', () => {
-            
-            if (gameOver) return; //выгоняем нафиг если true
+    function updateState(data) {
+        const board = data.board; 
+        const whoPlay = data.whoPlay; 
+        const winner = data.winner; 
 
-            const row = cell.getAttribute('data-row');
-            const col = cell.getAttribute('data-col');
-
-            // Отправляем информацию о ходе на сервер
-            fetch('/move', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json', // Говорим, что отправляем данные в формате JSON
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}' // Защита от атак
-                },
-                body: JSON.stringify({ row, col }) // Превращаем наши данные в строку
-            })
-            .then(response => {
-                // Если что-то пошло не так, показываем ошибку
-                if (!response.ok) {
-                    throw new Error('Network error');
-                }
-                return response.json(); // Превращаем ответ в JSON
-            })
-            .then(data => {
-                const board = data.board; 
-                const whoPlay = data.whoPlay; 
-                const winner = data.winner; 
-
-                // Обновляем каждую ячейку на доске
-                document.querySelectorAll('td').forEach(cell => {
-                    const r = cell.getAttribute('data-row'); // Получаем номер строки
-                    const c = cell.getAttribute('data-col'); // Получаем номер столбца
-                    cell.textContent = board[r][c]; // Заполняем ячейку символом (X или O)
-                    // Меняем класс ячейки для стилизации
-                    cell.className = board[r][c] === 'X' ? 'x' : (board[r][c] === 'O' ? 'o' : '');
-                    //. ? 'x' : ...:  тернарный оператор "если... то... иначе".
-                });
-
-
-                document.getElementById('whoPlay').textContent = whoPlay; 
-                document.getElementById('winner').textContent = winner || ''; 
-
-
-                if (winner) {
-                    gameOver = true; 
-                }
-            })
-            .catch(error => {
-                console.error('Произошла ошибка:', error); 
-            });
+        document.querySelectorAll('td').forEach(cell => {
+            const r = cell.getAttribute('data-row'); // Получаем номер строки
+            const c = cell.getAttribute('data-col'); // Получаем номер столбца
+            cell.textContent = board[r][c]; // Заполняем ячейку символом (X или O)
+            // Меняем класс ячейки для стилизации
+            cell.className = board[r][c] === 'X' ? 'x' : (board[r][c] === 'O' ? 'o' : '');
         });
+
+        document.getElementById('whoPlay').textContent = whoPlay; 
+        document.getElementById('winner').textContent = winner || ''; 
+
+        if (winner) {
+            document.querySelectorAll('td').forEach(cell => {
+                cell.removeEventListener('click', Move); 
+            });
+        }
+    }
+
+    function Move(event) {
+        const cell = event.target;
+        const row = cell.getAttribute('data-row');
+        const col = cell.getAttribute('data-col');
+
+        fetch('/move', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json', // Говорим, что отправляем данные в формате JSON
+                'X-CSRF-TOKEN': '{{ csrf_token() }}' // Защита от атак
+            },
+            body: JSON.stringify({ row, col }) // Превращаем наши данные в строку
+        })
+        .then(response => {
+            // Если что-то пошло не так, показываем ошибку
+            if (!response.ok) {
+                throw new Error('Network error');
+            }
+            return response.json(); // Превращаем ответ в JSON
+        })
+        .then(data => {
+            updateState(data); // Обновляем состояние после хода
+        })
+        .catch(error => {
+            console.error('Произошла ошибка:', error); 
+        });
+    }
+
+    // Обработчик для ячеек
+    document.querySelectorAll('td').forEach(cell => {
+        cell.addEventListener('click', Move); 
     });
 
     // Обработчик для кнопки сброса игры
@@ -100,6 +101,7 @@
         });
     });
 </script>
+
 
 
 </html>

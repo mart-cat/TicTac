@@ -50,6 +50,15 @@ class GameController extends Controller
             
             $board = session('board');
             $whoPlay = session('whoPlay');
+            $winner = session('winner');
+
+            if ($winner){
+                return response()->json([
+                    'board' => $board,
+                    'whoPlay' => $whoPlay,
+                    'winner' => $winner
+                ]);
+            }
     
             // Проверяем пуста ли ячейка
             if ($board[$row][$col] === '') {
