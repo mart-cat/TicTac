@@ -6,19 +6,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ asset('css/custom.css') }}">
     <title>Крестики-нолики</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
 </head>
 
 <body>
     <div class='container'>
         <h1 class="text-center">Сыграешь?</h1>
-        <p >Текущий игрок: <span id="whoPlay">{{$whoPlay}}</span></p>
+        <p>Игрок X: {{$room->player_x ?? 'Ожидание игрока'}}</p>
+        <p>Игрок O: {{$room->player_o ?? 'Ожидание игрока'}}</p>
+
+        <p>Ты играешь за: <span id="playerSymbol">{{ $playerSymbol ?? 'Неизвестно' }}</span></p>
+
+        <p>Текущий игрок: <span id="whoPlay">{{$turn}}</span></p>
+
 
         <table class="table table-bordered">
             @foreach ($board as $row => $cols)
                 <tr>
                     @foreach ($cols as $col => $cell)
-                        <td class="{{ $cell === 'X' ? 'x' : ($cell === 'O' ? 'o' : '') }}" 
-                            data-row="{{ $row }}" 
+                        <td class="{{ $cell === 'X' ? 'x' : ($cell === 'O' ? 'o' : '') }}" data-row="{{ $row }}"
                             data-col="{{ $col }}">
                             {{ $cell }}
                         </td>
@@ -30,78 +37,89 @@
         <button id='resetBut'> Сбросить <button>
     </div>
 </body>
-<!-- Я НЕНАВИЖУ JS, НО JQ УЧИТЬ ЛЕНЬ. ГОСПОДИ ПОМОГИ --> 
+<!-- Я НЕНАВИЖУ JS, НО JQ УЧИТЬ ЛЕНЬ. ГОСПОДИ ПОМОГИ -->
 <script>
-    function updateState(data) {
-        const board = data.board; 
-        const whoPlay = data.whoPlay; 
-        const winner = data.winner; 
 
+
+    function updateState(data) {
+        const board = data.board;
+        const whoPlay = data.turn; // теперь сюда передаем текущего игрока
+        const winner = data.winner;
+
+        // Обновляем таблицу
         document.querySelectorAll('td').forEach(cell => {
-            const r = cell.getAttribute('data-row'); // Получаем номер строки
-            const c = cell.getAttribute('data-col'); // Получаем номер столбца
-            cell.textContent = board[r][c]; // Заполняем ячейку символом (X или O)
-            // Меняем класс ячейки для стилизации
+            const r = cell.getAttribute('data-row');
+            const c = cell.getAttribute('data-col');
+            cell.textContent = board[r][c];
             cell.className = board[r][c] === 'X' ? 'x' : (board[r][c] === 'O' ? 'o' : '');
         });
 
-        document.getElementById('whoPlay').textContent = whoPlay; 
-        document.getElementById('winner').textContent = winner || ''; 
+        // Обновляем состояние текущего игрока
+        document.getElementById('whoPlay').textContent = whoPlay;
 
+        // Если есть победитель, показываем его
+        document.getElementById('winner').textContent = winner || '';
+
+        // Блокируем все клетки, если есть победитель
         if (winner) {
             document.querySelectorAll('td').forEach(cell => {
-                cell.removeEventListener('click', Move); 
+                cell.removeEventListener('click', Move); // Убираем обработчик клика, если победитель есть
             });
         }
     }
 
+
     function Move(event) {
-        const cell = event.target;
-        const row = cell.getAttribute('data-row');
-        const col = cell.getAttribute('data-col');
+    const cell = event.target;
+    const row = cell.getAttribute('data-row');
+    const col = cell.getAttribute('data-col');
 
-        fetch('/move', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json', // Говорим, что отправляем данные в формате JSON
-                'X-CSRF-TOKEN': '{{ csrf_token() }}' // Защита от атак
-            },
-            body: JSON.stringify({ row, col }) // Превращаем наши данные в строку
-        })
-        .then(response => {
-            // Если что-то пошло не так, показываем ошибку
-            if (!response.ok) {
-                throw new Error('Network error');
-            }
-            return response.json(); // Превращаем ответ в JSON
-        })
-        .then(data => {
-            updateState(data); // Обновляем состояние после хода
-        })
-        .catch(error => {
-            console.error('Произошла ошибка:', error); 
-        });
-    }
-
-    // Обработчик для ячеек
-    document.querySelectorAll('td').forEach(cell => {
-        cell.addEventListener('click', Move); 
+    // Отправляем запрос на сервер, чтобы выполнить ход
+    fetch('/move', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({ row: row, col: col })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Обновляем состояние доски на фронтенде
+        updateState(data);
+    })
+    .catch(error => {
+        console.error('Ошибка при выполнении хода:', error);
     });
+}
+
+
+
+document.querySelectorAll('td').forEach(cell => {
+    cell.addEventListener('click', Move);
+});
 
     // Обработчик для кнопки сброса игры
     document.getElementById('resetBut').addEventListener('click', () => {
         fetch('/reset', {
             method: 'GET', // Отправляем запрос на сброс игры
         })
-        .then(() => {
-            location.reload(); // Перезагружаем страницу, чтобы начать новую игру
-        })
-        .catch(error => {
-            console.error('Произошла ошибка при сбросе игры:', error); 
-        });
+            .then(() => {
+                location.reload(); // Перезагружаем страницу, чтобы начать новую игру
+            })
+            .catch(error => {
+                console.error('Произошла ошибка при сбросе игры:', error);
+            });
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        fetch('/get-player-symbol') // Новый маршрут, который мы сейчас добавим
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('playerSymbol').textContent = data.player_symbol || 'Неизвестно';
+            })
+            .catch(error => console.error("Ошибка получения символа игрока:", error));
     });
 </script>
-
-
 
 </html>
