@@ -20,21 +20,24 @@
                 <span class="close" id="closeCreateRoom">&times;</span>
                 <h2>Создать комнату</h2>
                 <form id="createRoomForm" action="{{ route('create.room') }}" method="POST">
-                    @csrf
-                    <input type="text" id="createRoomName" name="name" placeholder="Имя комнаты" 
-                        value="{{ old('createRoomName', session('createRoomName')) }}" required>
-                    <br><br>
-                    @error('createRoomName')
-                        <div class="error">{{ $message }}</div>
-                    @enderror
-                    <input type="password" id="createRoomPassword" name="password" placeholder="Пароль" 
-                        value="{{ old('createRoomPassword', session('createRoomPassword')) }}" required>
-                    <br><br>
-                    @error('createRoomPassword')
-                        <div class="error">{{ $message }}</div>
-                    @enderror
-                    <button type="submit">Создать</button>
-                </form>
+    @csrf
+    <input type="text" id="createRoomName" name="name" placeholder="Имя комнаты" 
+        value="{{ old('name') }}" required>
+    <br><br>
+    
+        <div class="error">Такое имя уже существует, попробуйте другое</div>
+  
+
+    <input type="password" id="createRoomPassword" name="password" placeholder="Пароль" 
+        value="{{ old('password') }}" required>
+    <br><br>
+    @error('password')
+        <div class="error">{{ $message }}</div>
+    @enderror
+
+    <button type="submit">Создать</button>
+</form>
+
             </div>
         </div>
 
@@ -46,78 +49,112 @@
                 <form id="joinRoomForm" action="{{ route('join.room') }}" method="POST">
                     @csrf
 
-                    <input type="text" id="joinRoomName" name="name" placeholder="Имя комнаты" 
+                    <input type="text" id="joinRoomName" name="name" placeholder="Имя комнаты"
                         value="{{ old('joinRoomName', session('joinRoomName')) }}" required>
                     <br><br>
                     @error('joinRoomName')
                         <div class="error">{{ $message }}</div>
                     @enderror
-                    <input type="password" id="joinRoomPassword" name="password" placeholder="Пароль" 
+                    <input type="password" id="joinRoomPassword" name="password" placeholder="Пароль"
                         value="{{ old('joinRoomPassword', session('joinRoomPassword')) }}" required>
                     <br><br>
                     @error('joinRoomPassword')
                         <div class="error">{{ $message }}</div>
                     @enderror
-                    @error('createRoomName')
-    <div class="error">{{ $message }}</div>
-@enderror
-@error('createRoomPassword')
-    <div class="error">{{ $message }}</div>
-@enderror
-
                     <button type="submit">Присоединиться</button>
                 </form>
             </div>
         </div>
     </div>
+
+    <script>
+        // Открытие и закрытие поп-ап окон
+        const createRoomModal = document.getElementById('createRoomModal');
+        const joinRoomModal = document.getElementById('joinRoomModal');
+        const createRoomBtn = document.getElementById('createRoomBtn');
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+        const closeCreateRoom = document.getElementById('closeCreateRoom');
+        const closeJoinRoom = document.getElementById('closeJoinRoom');
+
+        // Открытие модального окна для создания комнаты
+        createRoomBtn.addEventListener('click', function () {
+            createRoomModal.style.display = 'block';
+        });
+
+        // Открытие модального окна для присоединения к комнате
+        joinRoomBtn.addEventListener('click', function () {
+            joinRoomModal.style.display = 'block';
+        });
+
+        // Закрытие модального окна для создания комнаты
+        closeCreateRoom.addEventListener('click', function () {
+            createRoomModal.style.display = 'none';
+        });
+
+        // Закрытие модального окна для присоединения к комнате
+        closeJoinRoom.addEventListener('click', function () {
+            joinRoomModal.style.display = 'none';
+        });
+
+        // Закрытие модальных окон, если кликнули вне их
+        window.addEventListener('click', function (event) {
+            if (event.target === createRoomModal) {
+                createRoomModal.style.display = 'none';
+            } else if (event.target === joinRoomModal) {
+                joinRoomModal.style.display = 'none';
+            }
+        });
+
+        // Обработчики событий для форм
+        document.getElementById('createRoomForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            let formData = new FormData(this);
+
+            fetch("{{ route('create.room') }}", {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-CSRF-TOKEN": document.querySelector('input[name="_token"]').value
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = data.redirect; // Перенаправление в игру
+                    } else {
+                        alert("Ошибка: " + (data.error || "Неизвестная ошибка"));
+                    }
+                })
+                .catch(error => console.error("Ошибка:", error));
+        });
+
+        document.getElementById('joinRoomForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            let formData = new FormData(this);
+
+            fetch("{{ route('join.room') }}", {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-CSRF-TOKEN": document.querySelector('input[name="_token"]').value
+                }
+            })
+                .then(response => response.json()) // Преобразуем в JSON
+                .then(data => {
+                    console.log("Ответ сервера:", data); // Вывод в консоль для проверки
+
+                    if (data.success) {
+                        window.location.href = data.redirect; // Перенаправление на игру
+                    } else {
+                        alert("Ошибка: " + (data.error || "Неизвестная ошибка"));
+                    }
+                })
+                .catch(error => console.error("Ошибка:", error));
+        });
+
+    </script>
 </body>
-<script>
-    document.getElementById('createRoomForm').addEventListener('submit', function(event) {
-    event.preventDefault();
-    
-    let formData = new FormData(this);
 
-    fetch("{{ route('create.room') }}", {
-        method: "POST",
-        body: formData,
-        headers: {
-            "X-CSRF-TOKEN": document.querySelector('input[name="_token"]').value
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            window.location.href = data.redirect; // Перенаправление в игру
-        } else {
-            alert("Ошибка: " + (data.error || "Неизвестная ошибка"));
-        }
-    })
-    .catch(error => console.error("Ошибка:", error));
-});
-document.getElementById('joinRoomForm').addEventListener('submit', function(event) {
-    event.preventDefault();
-
-    let formData = new FormData(this);
-
-    fetch("{{ route('join.room') }}", {
-        method: "POST",
-        body: formData,
-        headers: {
-            "X-CSRF-TOKEN": document.querySelector('input[name="_token"]').value
-        }
-    })
-    .then(response => response.json()) // Преобразуем в JSON
-    .then(data => {
-        console.log("Ответ сервера:", data); // Вывод в консоль для проверки
-
-        if (data.success) {
-            window.location.href = data.redirect; // Перенаправление на игру
-        } else {
-            alert("Ошибка: " + (data.error || "Неизвестная ошибка"));
-        }
-    })
-    .catch(error => console.error("Ошибка:", error));
-});
-
-</script>
 </html>
